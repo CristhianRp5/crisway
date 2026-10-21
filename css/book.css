@@ -1,0 +1,295 @@
+/* CRISWAY · Book viewer
+   Turns the 16 A4 sheets into a hardcover book on a desk.
+   Everything that changes layout lives in @media screen, so print
+   (styles.css) still gets 16 plain A4 pages in document order. */
+
+@media screen {
+
+  /* ---------- Desk ---------- */
+  body.bk-on {
+    height: 100vh; height: 100dvh;
+    overflow: hidden;
+    background-color: #0B1E28;
+    background-image:
+      radial-gradient(ellipse 46% 48% at 50% 54%, rgba(213, 183, 125, 0.075), transparent 72%),
+      radial-gradient(ellipse 70% 65% at 50% 52%, rgba(57, 140, 145, 0.10), transparent 75%),
+      radial-gradient(ellipse 130% 100% at 50% 46%, #11303F 0%, #0B1E28 52%, #061118 100%);
+  }
+  /* linen weave + paper-grain noise, very low contrast */
+  body.bk-on::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px);
+  }
+  /* vignette */
+  body.bk-on::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    box-shadow: inset 0 0 180px 40px rgba(2, 8, 12, 0.55);
+  }
+
+  /* ---------- Toolbar ---------- */
+  .bk-on .toolbar {
+    position: relative; z-index: 40;
+    flex-wrap: nowrap;
+    padding: 10px 24px;
+    background: linear-gradient(rgba(6, 17, 24, 0.92), rgba(6, 17, 24, 0.72));
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(213, 183, 125, 0.16);
+  }
+  .bk-on .brand img { height: 32px; }
+  .bk-on .brand span {
+    font: italic 500 17px/1 var(--serif);
+    letter-spacing: 0.01em; text-transform: none;
+    color: #AFC0C5;
+    padding-left: 12px; border-left: 1px solid rgba(213, 183, 125, 0.3);
+  }
+  .bk-on .controls { gap: 10px; flex-wrap: nowrap; }
+  .bk-on .btn {
+    min-height: 38px; min-width: 38px; padding: 0 16px;
+    font: 500 13px/1 var(--sans); letter-spacing: 0.02em; text-transform: none;
+    color: #E8E1D2;
+    border: 1px solid rgba(213, 183, 125, 0.3);
+    transition: border-color .2s, color .2s, background-color .2s;
+  }
+  .bk-on .btn:hover { border-color: var(--gold); color: var(--gold); }
+  .bk-on .btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  .bk-on .btn:disabled { opacity: 0.32; cursor: default; border-color: rgba(213, 183, 125, 0.3); color: #E8E1D2; }
+  .bk-on #prev, .bk-on #next { width: 38px; padding: 0; border-radius: 50%; }
+  .bk-on .btn.solid { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+  .bk-on .btn.solid:hover { background: #E4CA95; color: var(--navy); }
+  .bk-on #present svg { display: none; }
+  .bk-on .counter {
+    min-width: 96px;
+    font: italic 500 19px/1 var(--serif);
+    letter-spacing: 0.02em; color: var(--ivory);
+    font-variant-numeric: lining-nums;
+  }
+
+  /* reading progress: a gold hairline under the toolbar */
+  .bk-progress {
+    position: fixed; left: 0; right: 0; top: var(--tb, 58px); z-index: 41;
+    height: 2px; pointer-events: none;
+    background: rgba(213, 183, 125, 0.08);
+  }
+  .bk-progress i {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, rgba(213, 183, 125, 0.25), #D5B77D);
+    transform-origin: left center;
+    transform: scaleX(var(--p, 0));
+    transition: transform .85s cubic-bezier(.65, 0, .35, 1);
+  }
+
+  /* ---------- Stage ---------- */
+  .bk-on .book {
+    position: fixed; left: 0; right: 0; bottom: 0; top: var(--tb, 58px);
+    z-index: 1;
+    padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: clip;
+  }
+  .bk-stage {
+    position: relative; flex: none;
+    width: calc(var(--pw) * 2); height: var(--ph);
+    margin-bottom: calc(var(--ph) * 0.06);
+    translate: var(--shift, 0px) 0;
+    perspective: var(--persp, 2600px);
+    perspective-origin: 50% 46%;
+    touch-action: pan-y pinch-zoom;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bk-single .bk-stage { width: var(--pw); }
+  .bk-anim .bk-stage { transition: translate .85s cubic-bezier(.65, 0, .35, 1); }
+  .bk-stage.bk-fading { opacity: 0; transition: opacity .14s ease; }
+  .bk-stage.bk-fadein { transition: opacity .2s ease; }
+  .bk-closed .bk-stage { cursor: pointer; }
+
+  /* ---------- Sheets ---------- */
+  .bk-on .bk-stage .sheet {
+    position: absolute; top: 0; left: 0;
+    margin: 0; box-shadow: none;
+    visibility: hidden;
+    overflow: hidden;
+    z-index: 5;
+    transform-origin: left center;
+    --r: calc(var(--s) * 7px);
+    --rc: calc(var(--s) * 16px);
+  }
+  .bk-on .bk-stage .sheet.bk-l,
+  .bk-on .bk-stage .sheet.bk-r { visibility: visible; }
+  .bk-spread .bk-stage .sheet.bk-r { left: var(--pw); }
+  .bk-on .bk-stage .sheet.bk-r { border-radius: 0 var(--r) var(--r) 0; }
+  .bk-on .bk-stage .sheet.bk-l { border-radius: var(--r) 0 0 var(--r); transform-origin: right center; }
+  .bk-on .bk-stage #p1.bk-r, .bk-on .bk-stage #p16.bk-r { border-radius: calc(var(--s) * 3px) var(--rc) var(--rc) calc(var(--s) * 3px); }
+  .bk-on .bk-stage #p16.bk-l { border-radius: var(--rc) calc(var(--s) * 3px) calc(var(--s) * 3px) var(--rc); }
+
+  .bk-on .bk-stage .sheet.bk-flip {
+    z-index: 20;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    will-change: transform;
+  }
+  .bk-on .bk-stage .sheet.bk-flip > .page { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+
+  /* turn shading (driven by --sh from JS) */
+  .bk-on .bk-stage .sheet::before {
+    content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    opacity: var(--sh, 0);
+  }
+  .bk-on .bk-stage .sheet.bk-r::before {
+    background: linear-gradient(to right, rgba(4, 12, 18, 0.85), rgba(4, 12, 18, 0.45) 35%, rgba(4, 12, 18, 0.18) 75%, rgba(4, 12, 18, 0.08));
+  }
+  .bk-on .bk-stage .sheet.bk-l::before {
+    background: linear-gradient(to left, rgba(4, 12, 18, 0.85), rgba(4, 12, 18, 0.45) 35%, rgba(4, 12, 18, 0.18) 75%, rgba(4, 12, 18, 0.08));
+  }
+
+  /* binding: gutter curvature on the inner edge, faint light on the fore-edge */
+  .bk-on .bk-stage .sheet::after {
+    content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  }
+  .bk-on .bk-stage .sheet.bk-r::after {
+    background:
+      linear-gradient(to right, rgba(24, 18, 8, 0.34) 0, rgba(24, 18, 8, 0.16) 1.4%, rgba(24, 18, 8, 0.06) 4%, rgba(24, 18, 8, 0) 9%),
+      linear-gradient(to right, transparent 9%, rgba(255, 255, 255, 0.05) 13%, transparent 22%),
+      linear-gradient(to left, rgba(0, 0, 0, 0.07), transparent 1.4%);
+  }
+  .bk-on .bk-stage .sheet.bk-l::after {
+    background:
+      linear-gradient(to left, rgba(24, 18, 8, 0.34) 0, rgba(24, 18, 8, 0.16) 1.4%, rgba(24, 18, 8, 0.06) 4%, rgba(24, 18, 8, 0) 9%),
+      linear-gradient(to left, transparent 9%, rgba(255, 255, 255, 0.05) 13%, transparent 22%),
+      linear-gradient(to right, rgba(0, 0, 0, 0.07), transparent 1.4%);
+  }
+  .bk-on .bk-stage .sheet.bk-r:has(> .page.dark)::after {
+    background:
+      linear-gradient(to right, rgba(0, 0, 0, 0.5) 0, rgba(0, 0, 0, 0.2) 1.6%, rgba(0, 0, 0, 0.06) 5%, transparent 10%),
+      linear-gradient(to left, rgba(255, 255, 255, 0.05), transparent 1.2%);
+  }
+  .bk-on .bk-stage .sheet.bk-l:has(> .page.dark)::after {
+    background:
+      linear-gradient(to left, rgba(0, 0, 0, 0.5) 0, rgba(0, 0, 0, 0.2) 1.6%, rgba(0, 0, 0, 0.06) 5%, transparent 10%),
+      linear-gradient(to right, rgba(255, 255, 255, 0.05), transparent 1.2%);
+  }
+  /* hardcover boards: hinge groove near the spine + soft cloth sheen */
+  .bk-on .bk-stage #p1.bk-r::after, .bk-on .bk-stage #p16.bk-r::after {
+    background:
+      linear-gradient(to right, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.2) 1%, rgba(255, 255, 255, 0.07) 2.4%, rgba(0, 0, 0, 0.32) 3.3%, rgba(255, 255, 255, 0.08) 4.1%, rgba(255, 255, 255, 0) 6%),
+      linear-gradient(118deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 38%, rgba(0, 0, 0, 0) 64%, rgba(0, 0, 0, 0.18)),
+      linear-gradient(to left, rgba(255, 255, 255, 0.08), transparent 0.8%);
+  }
+  .bk-on .bk-stage #p16.bk-l::after {
+    background:
+      linear-gradient(to left, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.2) 1%, rgba(255, 255, 255, 0.07) 2.4%, rgba(0, 0, 0, 0.32) 3.3%, rgba(255, 255, 255, 0.08) 4.1%, rgba(255, 255, 255, 0) 6%),
+      linear-gradient(242deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 38%, rgba(0, 0, 0, 0) 64%, rgba(0, 0, 0, 0.18)),
+      linear-gradient(to right, rgba(255, 255, 255, 0.08), transparent 0.8%);
+  }
+
+  /* blank reverse of a leaf, used for single-page turns */
+  .bk-verso {
+    position: absolute; top: 0; left: calc(var(--pw) * -1);
+    width: var(--pw); height: var(--ph);
+    z-index: 20; visibility: hidden;
+    transform-origin: right center;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border-radius: calc(var(--s) * 7px) 0 0 calc(var(--s) * 7px);
+    background:
+      linear-gradient(to left, rgba(24, 18, 8, 0.3), rgba(24, 18, 8, 0.05) 4%, transparent 9%),
+      #F1ECE2;
+  }
+  .bk-verso.board {
+    background:
+      linear-gradient(to left, rgba(0, 0, 0, 0.5), transparent 6%),
+      #0E2633;
+  }
+  .bk-verso.on { visibility: visible; }
+  .bk-verso::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; opacity: var(--sh, 0);
+    background: linear-gradient(to left, rgba(4, 12, 18, 0.85), rgba(4, 12, 18, 0.4) 40%, rgba(4, 12, 18, 0.1));
+  }
+
+  /* ---------- Page block (thickness) ---------- */
+  .bk-stack {
+    position: absolute; top: 0; z-index: 1;
+    width: var(--pw); height: var(--ph);
+    background: #E7E0D1;
+    border-radius: 0 calc(var(--s) * 7px) calc(var(--s) * 7px) 0;
+    transition: opacity .3s;
+  }
+  .bk-stack-l { left: 0; border-radius: calc(var(--s) * 7px) 0 0 calc(var(--s) * 7px); }
+  .bk-stack-r { left: var(--pw); }
+  .bk-single .bk-stack-r { left: 0; }
+  .bk-stack.off { opacity: 0; }
+
+  /* gold silk bookmark hanging from the head of the gutter */
+  .bk-ribbon {
+    position: absolute; z-index: 2;
+    left: calc(var(--pw) * 1.09);
+    top: calc(var(--ph) - 12px);
+    width: max(9px, calc(var(--pw) * 0.026));
+    height: calc(var(--ph) * 0.085);
+    background: linear-gradient(90deg, #A88849 0%, #E6CD97 38%, #D5B77D 60%, #B39253 100%);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
+    opacity: 0; transition: opacity .15s ease;
+    pointer-events: none;
+  }
+  .bk-ribbon.on { opacity: 1; transition: opacity .4s ease .25s; }
+  .bk-single .bk-ribbon { left: calc(var(--pw) * 0.12); }
+
+  /* ---------- Turn zones + corner curl ---------- */
+  .bk-zone {
+    position: absolute; top: 0; z-index: 30;
+    width: calc(var(--pw) * 0.075); height: var(--ph);
+    cursor: pointer;
+  }
+  .bk-zone[hidden] { display: none; }
+  .bk-zone-n { right: 0; }
+  .bk-zone-p { left: 0; }
+  .bk-curl {
+    position: absolute; bottom: 0; width: 0; height: 0;
+    transition: width .28s cubic-bezier(.3, .7, .3, 1), height .28s cubic-bezier(.3, .7, .3, 1);
+    filter: drop-shadow(-2px -2px 3px rgba(0, 0, 0, 0.22));
+  }
+  .bk-zone-n .bk-curl {
+    right: 0;
+    border-bottom-right-radius: calc(var(--s) * 7px);
+    background:
+      linear-gradient(to bottom right, #FFFDF8 0%, #F0E9DB 34%, #D6CCB7 49.4%, transparent 50%),
+      linear-gradient(to bottom right, transparent 50%, #D9D0BE 50%);
+  }
+  .bk-zone-p .bk-curl {
+    left: 0;
+    border-bottom-left-radius: calc(var(--s) * 7px);
+    filter: drop-shadow(2px -2px 3px rgba(0, 0, 0, 0.22));
+    background:
+      linear-gradient(to bottom left, #FFFDF8 0%, #F0E9DB 34%, #D6CCB7 49.4%, transparent 50%),
+      linear-gradient(to bottom left, transparent 50%, #D9D0BE 50%);
+  }
+  @media (hover: hover) {
+    .bk-zone:hover .bk-curl { width: calc(var(--pw) * 0.085); height: calc(var(--pw) * 0.085); }
+  }
+  .bk-busy .bk-curl { width: 0 !important; height: 0 !important; }
+
+  /* ---------- Small screens ---------- */
+  @media (max-width: 560px) {
+    .bk-on .toolbar { padding: 8px 12px; gap: 8px; }
+    .bk-on .brand img { height: 28px; }
+    .bk-on .controls { gap: 6px; }
+    .bk-on .btn { padding: 0 12px; font-size: 12px; min-height: 36px; min-width: 36px; }
+    .bk-on #prev, .bk-on #next { width: 36px; }
+    .bk-on #present { width: 36px; padding: 0; border-radius: 50%; }
+    .bk-on #present svg { display: block; }
+    .bk-on #present .bk-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .bk-on .counter { min-width: 72px; font-size: 17px; }
+    body.bk-on::after { box-shadow: inset 0 0 90px 20px rgba(2, 8, 12, 0.5); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bk-anim .bk-stage, .bk-progress i, .bk-curl, .bk-ribbon { transition: none; }
+  }
+}
+
+/* ---------- Print: hide every viewer-only element ---------- */
+@media print {
+  .bk-stack, .bk-ribbon, .bk-verso, .bk-zone, .bk-progress { display: none !important; }
+  .bk-stage { display: block; position: static; translate: none; perspective: none; }
+}
